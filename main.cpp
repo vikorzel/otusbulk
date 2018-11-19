@@ -11,6 +11,7 @@ struct bulk_constructor{
     void add_subscriber(std::function<void(int64_t,const std::vector<std::string>&)> new_fun){
         subscribers.push_back(new_fun);
     }
+
     bool process_char(char ch){
         bool ret = true;
         switch(ch){
@@ -42,7 +43,7 @@ struct bulk_constructor{
                 if(input_stream.tellp()!=0){                    
                     bulk_element.push_back(input_stream.str());
                     if( bulk_element.size() >= size && !opened_brackets){
-                        print();
+                        finish_bulk();
                         set_defaults();
                     }
                     input_stream.str(std::string{});
@@ -57,7 +58,7 @@ struct bulk_constructor{
              case constructor_state::CLOSE_BRACKET:
                 opened_brackets--;
                 if(opened_brackets == 0){
-                    print();
+                    finish_bulk();
                     set_defaults();
                 }
                 if(opened_brackets < 0){
@@ -71,7 +72,7 @@ struct bulk_constructor{
                 ret = false;
              case constructor_state::FINISH_INPUT:
                 if( opened_brackets == 0 ){                
-                    print();
+                    finish_bulk();
                     set_defaults();
                 }else{
                     set_defaults();
@@ -81,7 +82,9 @@ struct bulk_constructor{
         
         return ret;
     }
+
 private:
+ 
     enum class constructor_state{
         DEFAULT,
         INPUT,
@@ -90,12 +93,14 @@ private:
         FINISH_INPUT,
         FINISH_STREAM
     };
+
     std::stringstream input_stream;
     constructor_state state = constructor_state::DEFAULT; 
     std::vector<std::string> bulk_element;
     size_t size;
     int opened_brackets = 0;
-    void print(){
+    
+    void finish_bulk(){
         for(auto& fn: subscribers){
             fn(timestamp,bulk_element);
         }
